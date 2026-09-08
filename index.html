@@ -603,8 +603,9 @@ function viewWorkout(){
       + '<div style="margin-top:5px"><span class="chip">'+repText(ex)+'</span>'
       + (ex.rir? '<span class="chip acc">'+ex.rir+' RIR</span>':'')
       + (ex.alt? '<span class="chip">'+ex.alt+'</span>':'') + '</div>';
-    if(sug) h += '<div class="banner">↑ Hit top of range last time - try <b>'+sug.w+' '+store.unit+'</b> this session'+(sug.rirLogged?'':' (reps only; log RIR to confirm)')+'</div>';
-    else if(item.seeded) h += '<div class="banner dim">Seeded from your current weights - adjust and go.</div>';
+    if(sug) h += '<div class="banner">Suggested today: <b>'+sug.w+' '+store.unit+'</b> - you hit the top of the range last time'+(sug.rirLogged?'':' (reps only; log RIR to confirm)')+'</div>';
+    else if(!ex.noWeight){ const _le=lastEntry(ex.id,item.variation); const _ws=_le?(_le.entry.sets||[]).map(x=>parseFloat(x.w)||0):[]; const _mw=_ws.length?Math.max.apply(null,_ws):0; if(_mw>0) h += '<div class="banner dim">Suggested today: keep <b>'+_mw+' '+store.unit+'</b> until every set hits the top of the range</div>'; }
+    if(!sug && item.seeded) h += '<div class="banner dim">Seeded from your current weights - adjust and go.</div>';
     // variation picker(s)
     if(ex.optionGroups){
       ["Lengthened","Shortened"].forEach(g=>{
