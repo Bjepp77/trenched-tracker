@@ -134,6 +134,18 @@ details.cues li::marker{color:var(--acc);}
 .summary-hero .big{font-size:44px;}
 svg.chart{width:100%; height:auto; display:block; background:var(--well); border:1px solid var(--line); border-radius:14px; margin-top:2px;}
 .footer-space{height:24px;}
+#restTimer{position:fixed;right:10px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:60;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:none;box-shadow:0 6px 22px rgba(0,0,0,.55);font-size:13px;text-align:center;max-width:175px}
+#restTimer.show{display:block}
+#restTimer #rtTxt{font-weight:800;letter-spacing:.04em;cursor:pointer;padding:2px 4px}
+#restTimer .rtex{display:block;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:1px}
+#restTimer.run #rtTxt{color:var(--acc,#8ab4f8)}
+#restTimer.done{animation:rtflash .5s alternate 6}
+@keyframes rtflash{from{background:var(--card)}to{background:var(--acc,#8ab4f8);color:#0B0D10}}
+#restTimer .rtb{margin-top:4px;display:flex;gap:4px;justify-content:center}
+#restTimer .rtb button{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:6px;font-size:11px;padding:2px 6px}
+.homeline{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.homeline b{color:#c9d4e2;font-weight:600}
+
 </style>
 </head>
 <body>
@@ -611,7 +623,7 @@ function viewWorkout(){
     const cols = setCols(ex);
     const vid = VAR_VIDEOS[keyFor(ex.id,item.variation)] || VIDEOS[ex.id] || null;
     h += '<div class="card excard type-'+day.type+'">'
-      + '<div class="exhead-row"><div class="exhead">'+esc(ex.name)+(ex.optional?' <span class="chip">optional</span>':'')+'</div>'
+      + '<div class="exhead-row"><div class="exhead" style="cursor:pointer" onclick="timerPresetT(\''+ex.id+'\')" title="Tap to load rest timer">'+esc(ex.name)+(ex.optional?' <span class="chip">optional</span>':'')+'</div>'
       + (vid? '<a class="formlink" href="'+vid+'" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Form</a>':'')
       + '</div>'
       + '<div style="margin-top:5px"><span class="chip">'+repText(ex)+'</span>'
@@ -633,6 +645,7 @@ function viewWorkout(){
         + customs.map(o=>'<option '+(item.variation===o?"selected":"")+'>'+esc(o)+'</option>').join("")
         + '<option value="__custom">+ Custom…</option></select>';
     }
+    var _hb=TRENCH_HB[ex.name];if(_hb) h += '<div class="homeline"><b>No machines/cables:</b> '+esc(_hb[0])+'<br><b>Bodyweight:</b> '+esc(_hb[1])+'</div>';
     // sets
     h += '<div class="setshead" style="grid-template-columns:'+cols+'"><span>Set</span>'
       + (ex.noWeight?'':"<span>"+store.unit+"</span>") + '<span>reps</span>' + (ex.rir?'<span>RIR</span>':'') + '<span></span></div>';
@@ -834,6 +847,55 @@ function finishWorkout(){
   ui.summary = { dayId:session.dayId, wins:wins, holds:holds };
   ui.view="summary"; render(); window.scrollTo(0,0);
 }
+
+/* === HOME / BODYWEIGHT ALTERNATES + PINNED REST TIMER === */
+var TRENCH_HB={
+'Flat Press or Dips':['DB floor press','Push-up'],
+'Incline Press':['Incline DB press on a propped bench','Feet-elevated push-up'],
+'Flat Fly':['DB flye on the floor','Wide push-up'],
+'Incline Fly':['Incline DB flye on a propped bench','Feet-elevated wide push-up'],
+'Wide Pull-Up / Pulldown':['Band pulldown anchored high','Pull-up or table row'],
+'Tucked Row':['1-arm DB row','Table row'],
+'Tucked-Elbow Row':['1-arm DB row','Table row'],
+'Chest-Supported Low to Mid Row':['Chest-supported DB row on a propped bench','Table row'],
+'Straight-Arm Pulldown':['Band straight-arm pulldown','Towel floor pullover'],
+'Kelso Shrug':['Bent-over backpack shrug','Scapular push-up'],
+'Leg Extension':['Band leg extension','Sissy squat holding a wall'],
+'Unilateral Leg Extension':['Band leg extension, one leg','Assisted single-leg squat to a chair'],
+'Bilateral Squat Pattern':['Goblet squat','Bodyweight squat'],
+'Unilateral Squat Pattern':['Backpack split squat','Bulgarian split squat'],
+'Hip Hinge':['DB Romanian deadlift','Single-leg Romanian deadlift'],
+'Seated Hip Hinge':['Seated DB good morning','Seated back extension, hands behind head'],
+'Leg Curl':['Towel leg curl','Nordic curl (assisted)'],
+'Calf Raise':['Single-leg calf raise on a step with a backpack','Single-leg calf raise'],
+'Hip Abduction':['Band lateral walk','Side-lying leg raise'],
+'Hip Adduction':['Copenhagen plank (short lever)','Side-lying adduction'],
+'Biceps Curl':['Backpack curl','Towel curl or chin-up'],
+'Overhead Triceps Extension':['DB overhead extension','Diamond push-up'],
+'Elbows-at-Side Triceps Extension':['Band pressdown','Chair dip'],
+'Lateral Flexion':['Backpack side bend','Side plank hip dips'],
+'Lumbar Flexion':['Backpack crunch','Crunch'],
+'Neck Flexion / Extension':['Towel-padded neck curl','Same, with hands for light resistance'],
+'External Rotation':['Side-lying rotation with a water bottle','Side-lying rotation with a can'],
+'Internal Rotation':['Band internal rotation','Side-lying internal rotation with a can'],
+'Wrist Flexion':['Water-bottle wrist curl','Wrist curl with a can']
+};
+var TRENCH_REST={'Flat Press or Dips':150,'Incline Press':150,'Wide Pull-Up / Pulldown':150,'Tucked Row':150,'Tucked-Elbow Row':150,'Chest-Supported Low to Mid Row':150,'Bilateral Squat Pattern':150,'Unilateral Squat Pattern':150,'Hip Hinge':150,'Seated Hip Hinge':150,'Pogo Jumps':60,'Plyometrics':60};
+var RT={sec:0,left:0,at:0,t:null,label:''};
+function exById(id){for(var i=0;i<PROGRAM.days.length;i++){var xs=PROGRAM.days[i].exercises;for(var j=0;j<xs.length;j++)if(xs[j].id===id)return xs[j];}return null;}
+function rtEl(){var el=document.getElementById('restTimer');if(!el){el=document.createElement('div');el.id='restTimer';el.innerHTML='<div id="rtTxt" onclick="rtToggle(event)">REST --:--</div><div class="rtb"><button onclick="rtBump(event,30)">+30</button><button onclick="rtBump(event,-30)">-30</button><button onclick="rtClose(event)">&times;</button></div>';document.body.appendChild(el);}return el;}
+function timerPresetT(id){var ex=exById(id);if(!ex)return;var s=TRENCH_REST[ex.name]||90;rtSet(s,ex.name,false);}
+function rtSet(sec,label,auto){RT.sec=sec;RT.left=sec;RT.label=(label||'').slice(0,20);rtStop();var el=rtEl();el.classList.add('show');el.classList.remove('done');rtPaint();if(auto&&sec>0)rtStart();}
+function rtStart(){RT.at=Date.now();RT.t=setInterval(rtTick,250);rtEl().classList.add('run');}
+function rtStop(){if(RT.t)clearInterval(RT.t);RT.t=null;var e=document.getElementById('restTimer');if(e)e.classList.remove('run');}
+function rtTick(){RT.left=Math.max(0,RT.sec-(Date.now()-RT.at)/1000);rtPaint();if(RT.left<=0){rtStop();var e=rtEl();e.classList.add('done');if(navigator.vibrate)navigator.vibrate([120,60,120]);rtBeep();}}
+function rtBeep(){try{var C=window.AudioContext||window.webkitAudioContext;var c=new C();var o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.setValueAtTime(.2,c.currentTime);o.start();o.stop(c.currentTime+.35);}catch(e){}}
+function rtPaint(){var t=document.getElementById('rtTxt');if(!t)return;if(RT.sec<=0){t.innerHTML='<span class="rtex">'+RT.label+'</span>';return;}var l=Math.ceil(RT.left),m=Math.floor(l/60),s=l%60;t.innerHTML=(RT.label?'<span class="rtex">'+RT.label+'</span>':'')+'REST '+m+':'+(s<10?'0':'')+s;}
+function rtToggle(e){e.stopPropagation();if(RT.sec<=0)return;if(RT.t){RT.left=Math.max(0,RT.sec-(Date.now()-RT.at)/1000);RT.sec=RT.left;rtStop();rtPaint();}else{RT.sec=RT.left;rtStart();}}
+function rtBump(e,n){e.stopPropagation();if(RT.t){RT.sec=Math.max(0,RT.sec+n);RT.at=Date.now();}else{RT.sec=Math.max(0,RT.sec+n);RT.left=RT.sec;}rtPaint();}
+function rtClose(e){e.stopPropagation();rtStop();var el=document.getElementById('restTimer');if(el){el.classList.remove('show');el.classList.remove('done');}}
+/* === END ALTERNATES + TIMER === */
+
 app.addEventListener("click", e=>{
   const t = e.target.closest("[data-act]"); if(!t) return;
   const act = t.dataset.act;
@@ -848,6 +910,7 @@ app.addEventListener("click", e=>{
       const nxt = item.sets[+t.dataset.set+1];
       if(nxt){ if(nxt.w==="") nxt.w=s.w; if(nxt.r==="") nxt.r=s.r; }
     }
+    if(s.done && typeof rtSet==='function'){var _e2=exById(t.dataset.ex);var _sec=_e2?(TRENCH_REST[_e2.name]||90):90;rtSet(_sec,_e2?_e2.name:'',true);}
     save(); render();
   }
   else if(act==="addset"){
