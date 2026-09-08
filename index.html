@@ -419,6 +419,20 @@ function lastEntry(exId, variation){
 function seedFor(exId, variation){ return SEED[keyFor(exId, variation)] || null; }
 
 /* Progression: PDF rule - top of rep range on ALL sets at target RIR -> +smallest increment. */
+
+// --- shared strength layer (cross-program suggestions; reads/writes swolequest.strength.v1, never touches program stores) ---
+const SQSTR='swolequest.strength.v1';
+function strLoad(){try{const s=JSON.parse(localStorage.getItem(SQSTR));if(s&&s.v===1&&s.ex)return s;}catch(e){} return {v:1,ex:{}};}
+function strKey(n){return String(n).toUpperCase().replace(/\([^)]*\)/g,'').replace(/[^A-Z0-9 ]/g,'').replace(/\s+/g,' ').trim();}
+function strWrite(name,w,r,unit,src){
+  if(!(parseFloat(w)>0))return;
+  const s=strLoad();const k=strKey(name);if(!k)return;
+  const rec={w:parseFloat(w),r:parseFloat(r)||null,date:new Date().toISOString().slice(0,10),unit:unit||'lb',src:src};
+  const cur=s.ex[k];
+  if(!cur||rec.w>cur.w||rec.date>cur.date){s.ex[k]=rec;try{localStorage.setItem(SQSTR,JSON.stringify(s));}catch(e){}}
+}
+function strLookup(name){return strLoad().ex[strKey(name)]||null;}
+
 function progression(ex, variation){
   const last = lastEntry(ex.id, variation);
   if(!last) return null;
@@ -604,7 +618,7 @@ function viewWorkout(){
       + (ex.rir? '<span class="chip acc">'+ex.rir+' RIR</span>':'')
       + (ex.alt? '<span class="chip">'+ex.alt+'</span>':'') + '</div>';
     if(sug) h += '<div class="banner">Suggested today: <b>'+sug.w+' '+store.unit+'</b> - you hit the top of the range last time'+(sug.rirLogged?'':' (reps only; log RIR to confirm)')+'</div>';
-    else if(!ex.noWeight){ const _le=lastEntry(ex.id,item.variation); const _ws=_le?(_le.entry.sets||[]).map(x=>parseFloat(x.w)||0):[]; const _mw=_ws.length?Math.max.apply(null,_ws):0; if(_mw>0) h += '<div class="banner dim">Suggested today: keep <b>'+_mw+' '+store.unit+'</b> until every set hits the top of the range</div>'; }
+    else if(!ex.noWeight){ const _le=lastEntry(ex.id,item.variation); const _ws=_le?(_le.entry.sets||[]).map(x=>parseFloat(x.w)||0):[]; const _mw=_ws.length?Math.max.apply(null,_ws):0; if(_mw>0) h += '<div class="banner dim">Suggested today: keep <b>'+_mw+' '+store.unit+'</b> until every set hits the top of the range</div>'; else { const _sh=strLookup(ex.name); if(_sh) h += '<div class="banner dim">Suggested today: <b>'+_sh.w+' '+_sh.unit+'</b> (from your '+_sh.src+' log - log it here to start progression)</div>'; } }
     if(!sug && item.seeded) h += '<div class="banner dim">Seeded from your current weights - adjust and go.</div>';
     // variation picker(s)
     if(ex.optionGroups){
@@ -807,6 +821,7 @@ function finishWorkout(){
     if(sets.length) session.exercises.push({ exId:item.exId, variation:item.variation, sets:sets });
   });
   store.sessions.push(session);
+  session.exercises.forEach(e=>{ const _ex=exById(day,e.exId); if(_ex&&_ex.noWeight)return; const _bw=Math.max.apply(null,[0].concat(e.sets.map(x=>parseFloat(x.w)||0))); const _nm=(typeof e.variation==='string'&&e.variation)?e.variation:(_ex?_ex.name:e.exId); strWrite(_nm,_bw,null,store.unit,'TRENCHED'); });
   store.draft = null; save();
   // summary: progression for next time
   const wins = [], holds = [];
