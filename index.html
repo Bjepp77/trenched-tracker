@@ -150,7 +150,7 @@ svg.chart{width:100%; height:auto; display:block; background:var(--well); border
 </head>
 <body>
 <div id="app"></div>
-<input type="file" id="importFile" accept="application/json,.json" style="display:none">
+<input type="file" id="importFile" aria-label="Import backup file" accept="application/json,.json" style="display:none">
 <script>
 'use strict';
 /* ============================================================
@@ -754,12 +754,12 @@ function viewWorkout(){
     // variation picker(s)
     if(ex.optionGroups){
       ["Lengthened","Shortened"].forEach(g=>{
-        h += '<div class="varlabel">'+g+' variation</div><select data-act="var" data-ex="'+ex.id+'" data-group="'+g+'">'
+        h += '<div class="varlabel">'+g+' variation</div><select aria-label="'+g+' variation" data-act="var" data-ex="'+ex.id+'" data-group="'+g+'">'
           + ex.optionGroups[g].map(o=>'<option '+(item.variation[g]===o?"selected":"")+'>'+esc(o)+'</option>').join("") + '</select>';
       });
     } else if(ex.options.length){
       const customs = store.customVars[ex.id]||[];
-      h += '<div class="varlabel">Variation</div><select data-act="var" data-ex="'+ex.id+'">'
+      h += '<div class="varlabel">Variation</div><select aria-label="Variation" data-act="var" data-ex="'+ex.id+'">'
         + ex.options.map(o=>'<option '+(item.variation===o?"selected":"")+'>'+esc(o)+'</option>').join("")
         + customs.map(o=>'<option '+(item.variation===o?"selected":"")+'>'+esc(o)+'</option>').join("")
         + '<option value="__custom">+ Custom…</option></select>';
@@ -772,9 +772,9 @@ function viewWorkout(){
       const lbl = s.label || ("Set "+(si+1));
       h += '<div class="setrow" style="grid-template-columns:'+cols+'">'
         + '<div class="slabel">'+esc(lbl)+'</div>'
-        + (ex.noWeight?'':'<input type="text" inputmode="decimal" data-ex="'+ex.id+'" data-set="'+si+'" data-f="w" value="'+esc(s.w)+'" placeholder="BW">')
-        + '<input type="text" inputmode="numeric" data-ex="'+ex.id+'" data-set="'+si+'" data-f="r" value="'+esc(s.r)+'" placeholder="'+ex.min+'–'+ex.max+'">'
-        + (ex.rir? '<input type="text" inputmode="decimal" data-ex="'+ex.id+'" data-set="'+si+'" data-f="rir" value="'+esc(s.rir)+'" placeholder="'+ex.rir+'">':'')
+        + (ex.noWeight?'':'<input type="text" aria-label="'+esc(ex.name)+' set '+(si+1)+' weight" inputmode="decimal" data-ex="'+ex.id+'" data-set="'+si+'" data-f="w" value="'+esc(s.w)+'" placeholder="BW">')
+        + '<input type="text" aria-label="'+esc(ex.name)+' set '+(si+1)+' reps" inputmode="numeric" data-ex="'+ex.id+'" data-set="'+si+'" data-f="r" value="'+esc(s.r)+'" placeholder="'+ex.min+'–'+ex.max+'">'
+        + (ex.rir? '<input type="text" aria-label="'+esc(ex.name)+' set '+(si+1)+' reps in reserve" inputmode="decimal" data-ex="'+ex.id+'" data-set="'+si+'" data-f="rir" value="'+esc(s.rir)+'" placeholder="'+ex.rir+'">':'')
         + '<button class="chk'+(s.done?" done":"")+'" data-act="chk" data-ex="'+ex.id+'" data-set="'+si+'">'+(s.done?"✓":"")+'</button>'
         + '</div>';
     });
@@ -860,7 +860,7 @@ function viewHistory(){
   }
   let h = topbar("History");
   if(!keys.length){ return h + '<div class="muted">Log a workout first, then trends show up here.</div>'; }
-  h += '<div class="varlabel">Exercise</div><select data-act="histpick">';
+  h += '<div class="varlabel">Exercise</div><select aria-label="Exercise" data-act="histpick">';
   let curDay = null;
   keys.forEach(k=>{
     if(k.day.id!==curDay){ if(curDay!==null) h += '</optgroup>'; h += '<optgroup label="'+k.day.name+'">'; curDay = k.day.id; }
@@ -890,11 +890,11 @@ function viewHistory(){
 function viewMore(){
   let h = topbar("More");
   h += '<div class="section-label">SETTINGS</div><div class="card">'
-    + '<div class="varlabel">Weight unit</div><select data-act="unit">'
+    + '<div class="varlabel">Weight unit</div><select aria-label="Weight unit" data-act="unit">'
     + '<option value="lb"'+(store.unit==="lb"?" selected":"")+'>lb</option>'
     + '<option value="kg"'+(store.unit==="kg"?" selected":"")+'>kg</option></select>'
     + '<div class="varlabel">Smallest practical increment</div>'
-    + '<input type="text" inputmode="decimal" data-act="inc" value="'+store.inc+'">'
+    + '<input type="text" aria-label="Smallest practical increment" inputmode="decimal" data-act="inc" value="'+store.inc+'">'
     + '<div class="faint" style="margin-top:6px">Used by the progression engine when you top out a rep range.</div></div>';
   h += '<div class="section-label">BACKUP</div><div class="card">'
     + '<button class="btn ghost" data-act="export">Export JSON backup</button>'
