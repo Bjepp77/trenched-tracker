@@ -1064,11 +1064,11 @@ app.addEventListener("input", e=>{
   const t = e.target;
   if(t.dataset && t.dataset.ex && t.dataset.f){
     const item = draftItem(t.dataset.ex);
-    item.sets[+t.dataset.set][t.dataset.f] = t.value;
+    item.sets[+t.dataset.set][t.dataset.f] = t.value.replace(/^\s*(\d+),(\d+)\s*$/,"$1.$2");
     save();
   }
   else if(t.dataset && t.dataset.act==="inc"){
-    const v = parseFloat(t.value);
+    const v = parseFloat(t.value.replace(",","."));
     if(v>0){ store.inc = v; save(); }
   }
 });
