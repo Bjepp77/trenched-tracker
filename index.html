@@ -480,9 +480,19 @@ const VARNAME_VIDEOS = {
    STORE (localStorage)
    ============================================================ */
 const LS_KEY = "trenched2.v1";
-function loadStore(){ try{ const s = JSON.parse(localStorage.getItem(LS_KEY)); if(s && s.v===1) return s; }catch(e){} return null; }
-let store = loadStore() || { v:1, unit:"lb", inc:5, sessions:[], draft:null, customVars:{} };
-function save(){ localStorage.setItem(LS_KEY, JSON.stringify(store)); }
+function isObj(x){ return !!x && typeof x==="object" && !Array.isArray(x); }
+function normStore(s){
+  const o = Object.assign({ v:1, unit:"lb", inc:5, sessions:[], draft:null, customVars:{} }, s);
+  if(o.unit!=="lb" && o.unit!=="kg") o.unit = "lb";
+  if(!(o.inc>0)) o.inc = 5;
+  if(!Array.isArray(o.sessions)) o.sessions = [];
+  if(!isObj(o.customVars)) o.customVars = {};
+  if(!isObj(o.draft)) o.draft = null;
+  return o;
+}
+function loadStore(){ try{ const s = JSON.parse(localStorage.getItem(LS_KEY)); if(isObj(s) && s.v===1) return normStore(s); }catch(e){} return null; }
+let store = loadStore() || normStore({});
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(store)); }catch(e){ console.warn("Trenched: could not save", e); if(!save.warned){ save.warned=true; alert("Could not save: storage is full or blocked. Export your data from More now so nothing is lost."); } } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
 const ui = { view:"today", dayId:null, histKey:null, summary:null, openCues:{} };
@@ -518,6 +528,25 @@ function lastEntry(exId, variation){
   }
   return null;
 }
+/* Switching lb/kg: every saved and in-progress weight is converted so a number never changes meaning.
+   kg is kept to 0.1, lb to 0.5; the plate step (inc) is converted to the nearest 0.5 kg or snapped to a usable value. */
+function convertUnits(to){
+  const toKg = to==="kg";
+  /* Only plain numbers are converted (text such as "25-30" or "BW+25" is left alone). The converted set remembers
+     what it came from (st.from = {u,w,c}); switching back while the number is still the converted one restores the
+     original exactly, so repeated switching cannot walk the number away. */
+  const conv = st=>{ const s = String(st.w).trim(); if(!/^(\d+\.?\d*|\.\d+)$/.test(s) || !(parseFloat(s)>0)) return;
+    const f = st.from;
+    if(f && f.u===to && f.c===st.w){ st.w = f.w; delete st.from; return; }
+    const n = parseFloat(s), c = String(toKg ? Math.round(n*0.45359237*10)/10 : Math.round(n/0.45359237*2)/2);
+    st.from = { u:store.unit, w:st.w, c:c }; st.w = c; };
+  const sets = list=>{ (list||[]).forEach(x=>{ (x.sets||[]).forEach(st=>{ if(st && st.w!=="" && st.w!=null) conv(st); }); }); };
+  store.sessions.forEach(ss=> sets(ss.exercises));
+  if(store.draft) sets(store.draft.items);
+  const inc = toKg ? Math.max(0.5,Math.round(store.inc*0.45359237*2)/2) : Math.round(store.inc/0.45359237*2)/2;
+  store.inc = inc>0 ? (toKg ? inc : (Math.abs(inc-5*Math.round(inc/5))<=0.5 && Math.round(inc/5)>0 ? 5*Math.round(inc/5) : inc)) : store.inc;
+  store.unit = to;
+}
 function seedFor(exId, variation){ return SEED[keyFor(exId, variation)] || null; }
 
 /* Progression: PDF rule - top of rep range on ALL sets at target RIR -> +smallest increment. */
@@ -529,7 +558,7 @@ function strKey(n){return String(n).toUpperCase().replace(/\([^)]*\)/g,'').repla
 function strWrite(name,w,r,unit,src){
   if(!(parseFloat(w)>0))return;
   const s=strLoad();const k=strKey(name);if(!k)return;
-  const rec={w:parseFloat(w),r:parseFloat(r)||null,date:new Date().toISOString().slice(0,10),unit:unit||'lb',src:src};
+  const rec={w:parseFloat(w),r:parseFloat(r)||null,date:(function(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(new Date()),unit:unit||'lb',src:src};
   const cur=s.ex[k];
   if(!cur||rec.w>cur.w||rec.date>cur.date){s.ex[k]=rec;try{localStorage.setItem(SQSTR,JSON.stringify(s));}catch(e){}}
 }
@@ -982,7 +1011,7 @@ function rtTick(){RT.left=Math.max(0,RT.sec-(Date.now()-RT.at)/1000);rtPaint();i
 function rtBeep(){try{var C=window.AudioContext||window.webkitAudioContext;var c=new C();var o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.setValueAtTime(.2,c.currentTime);o.start();o.stop(c.currentTime+.35);}catch(e){}}
 function rtPaint(){var t=document.getElementById('rtTxt');if(!t)return;if(RT.sec<=0){t.innerHTML='<span class="rtex">'+RT.label+'</span>';return;}var l=Math.ceil(RT.left),m=Math.floor(l/60),s=l%60;t.innerHTML=(RT.label?'<span class="rtex">'+RT.label+'</span>':'')+'REST '+m+':'+(s<10?'0':'')+s;}
 function rtToggle(e){e.stopPropagation();if(RT.sec<=0)return;if(RT.t){RT.left=Math.max(0,RT.sec-(Date.now()-RT.at)/1000);RT.sec=RT.left;rtStop();rtPaint();}else{RT.sec=RT.left;rtStart();}}
-function rtBump(e,n){e.stopPropagation();if(RT.t){RT.sec=Math.max(0,RT.sec+n);RT.at=Date.now();}else{RT.sec=Math.max(0,RT.sec+n);RT.left=RT.sec;}rtPaint();}
+function rtBump(e,n){e.stopPropagation();if(RT.t)RT.left=Math.max(0,RT.sec-(Date.now()-RT.at)/1000);RT.left=Math.max(0,RT.left+n);RT.sec=RT.left;RT.at=Date.now();rtPaint();}
 function rtClose(e){e.stopPropagation();rtStop();var el=document.getElementById('restTimer');if(el){el.classList.remove('show');el.classList.remove('done');}}
 /* === END ALTERNATES + TIMER === */
 
@@ -1070,7 +1099,7 @@ app.addEventListener("change", e=>{
     item.seeded = !!seed && !last;
     save(); render();
   }
-  else if(t.dataset && t.dataset.act==="unit"){ store.unit = t.value; save(); render(); }
+  else if(t.dataset && t.dataset.act==="unit"){ if(t.value!==store.unit) convertUnits(t.value); save(); render(); }
   else if(t.dataset && t.dataset.act==="histpick"){ ui.histKey = t.value; render(); }
 });
 document.getElementById("importFile").addEventListener("change", e=>{
@@ -1079,10 +1108,12 @@ document.getElementById("importFile").addEventListener("change", e=>{
   rd.onload = ()=>{
     try{
       const d = JSON.parse(rd.result);
-      if(d && d.store && Array.isArray(d.store.sessions)){
-        store = d.store; save(); ui.view="today"; render();
-        alert("Backup imported: "+store.sessions.length+" sessions.");
-      } else alert("That file does not look like a Trenched backup.");
+      if(d && isObj(d.store) && d.store.v===1 && Array.isArray(d.store.sessions) && d.store.sessions.every(isObj)){
+        if(!confirm("Replace the "+store.sessions.length+" sessions on this device with the "+d.store.sessions.length+" in this backup?")){ return; }
+        const prev = store;
+        try{ store = normStore(d.store); save(); ui.view="today"; render(); alert("Backup imported: "+store.sessions.length+" sessions."); }
+        catch(err){ store = prev; save(); ui.view="today"; render(); alert("That backup did not work. Your previous data was kept."); }
+      } else alert("That file does not look like a Trenched backup. Nothing was changed.");
     }catch(err){ alert("Could not read that file."); }
   };
   rd.readAsText(f);
@@ -1095,50 +1126,6 @@ app.addEventListener("toggle", e=>{
   }
 }, true);
 
-/* ============================================================
-   DEMO MODE (for screenshots / testing): open file with #demo
-   ============================================================ */
-if(location.hash==="#demo"){
-  store.sessions = [{
-    id:1, dayId:"push-a", date:new Date(Date.now()-3*864e5).toISOString(),
-    exercises:[
-      {exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"205",r:"6",rir:"2",done:true},{w:"205",r:"6",rir:"2",done:true}]},
-      {exId:"pa-fly", variation:"Dumbbell Incline Fly", sets:[{w:"50",r:"8",rir:"1",done:true},{w:"50",r:"7",rir:"0",done:true}]}
-    ]
-  },{
-    id:2, dayId:"pull-a", date:new Date(Date.now()-2*864e5).toISOString(),
-    exercises:[{exId:"plla-row", variation:"Chest-Supported T-Bar Row", sets:[{w:"135",r:"5",rir:"1",done:true},{w:"135",r:"5",rir:"2",done:true}]}]
-  }];
-  store.draft = buildDraft("push-b");
-  store.draft.items[1].sets[0].done = true; // incline set 1 done
-  ui.openCues["pb-incline"] = true;
-  save();
-  ui.view = "workout";
-}
-
-if(location.hash==="#demo2"){
-  store.sessions = [
-   {id:1, dayId:"push-a", date:new Date(Date.now()-13*864e5).toISOString(),
-    exercises:[{exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"195",r:"6",rir:"2",done:true},{w:"195",r:"6",rir:"2",done:true}]}]},
-   {id:2, dayId:"push-a", date:new Date(Date.now()-6*864e5).toISOString(),
-    exercises:[{exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"205",r:"6",rir:"2",done:true},{w:"205",r:"6",rir:"2",done:true}]}]},
-   {id:3, dayId:"pull-a", date:new Date(Date.now()-2*864e5).toISOString(),
-    exercises:[{exId:"plla-row", variation:"Chest-Supported T-Bar Row", sets:[{w:"135",r:"5",rir:"1",done:true},{w:"135",r:"5",rir:"2",done:true}]}]}
-  ];
-  store.draft = buildDraft("push-a");
-  save();
-  ui.view = "workout";
-}
-if(location.hash==="#demo3"){
-  store.sessions = [
-   {id:1, dayId:"push-a", date:new Date(Date.now()-13*864e5).toISOString(),
-    exercises:[{exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"195",r:"6",rir:"2",done:true},{w:"195",r:"6",rir:"2",done:true}]}]},
-   {id:2, dayId:"push-a", date:new Date(Date.now()-6*864e5).toISOString(),
-    exercises:[{exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"205",r:"6",rir:"2",done:true},{w:"205",r:"6",rir:"2",done:true}]}]}
-  ];
-  save();
-  ui.view = "history";
-}
 const hv = location.hash.replace('#','');
 if(["today","week","history","more"].indexOf(hv) >= 0){ ui.view = hv; }
 render();
