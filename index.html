@@ -532,9 +532,15 @@ function lastEntry(exId, variation){
    kg is kept to 0.1, lb to 0.5; the plate step (inc) is converted to the nearest 0.5 kg or snapped to a usable value. */
 function convertUnits(to){
   const toKg = to==="kg";
-  const conv = w=>{ const n = parseFloat(w); if(!(n>0)) return w;
-    return String(toKg ? Math.round(n*0.45359237*10)/10 : Math.round(n/0.45359237*2)/2); };
-  const sets = list=>{ (list||[]).forEach(x=>{ (x.sets||[]).forEach(st=>{ if(st && st.w!=="" && st.w!=null) st.w = conv(st.w); }); }); };
+  /* Only plain numbers are converted (text such as "25-30" or "BW+25" is left alone). The converted set remembers
+     what it came from (st.from = {u,w,c}); switching back while the number is still the converted one restores the
+     original exactly, so repeated switching cannot walk the number away. */
+  const conv = st=>{ const s = String(st.w).trim(); if(!/^(\d+\.?\d*|\.\d+)$/.test(s) || !(parseFloat(s)>0)) return;
+    const f = st.from;
+    if(f && f.u===to && f.c===st.w){ st.w = f.w; delete st.from; return; }
+    const n = parseFloat(s), c = String(toKg ? Math.round(n*0.45359237*10)/10 : Math.round(n/0.45359237*2)/2);
+    st.from = { u:store.unit, w:st.w, c:c }; st.w = c; };
+  const sets = list=>{ (list||[]).forEach(x=>{ (x.sets||[]).forEach(st=>{ if(st && st.w!=="" && st.w!=null) conv(st); }); }); };
   store.sessions.forEach(ss=> sets(ss.exercises));
   if(store.draft) sets(store.draft.items);
   const inc = toKg ? Math.max(0.5,Math.round(store.inc*0.45359237*2)/2) : Math.round(store.inc/0.45359237*2)/2;
