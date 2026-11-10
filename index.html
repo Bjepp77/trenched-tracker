@@ -528,6 +528,19 @@ function lastEntry(exId, variation){
   }
   return null;
 }
+/* Switching lb/kg: every saved and in-progress weight is converted so a number never changes meaning.
+   kg is kept to 0.1, lb to 0.5; the plate step (inc) is converted to the nearest 0.5 kg or snapped to a usable value. */
+function convertUnits(to){
+  const toKg = to==="kg";
+  const conv = w=>{ const n = parseFloat(w); if(!(n>0)) return w;
+    return String(toKg ? Math.round(n*0.45359237*10)/10 : Math.round(n/0.45359237*2)/2); };
+  const sets = list=>{ (list||[]).forEach(x=>{ (x.sets||[]).forEach(st=>{ if(st && st.w!=="" && st.w!=null) st.w = conv(st.w); }); }); };
+  store.sessions.forEach(ss=> sets(ss.exercises));
+  if(store.draft) sets(store.draft.items);
+  const inc = toKg ? Math.max(0.5,Math.round(store.inc*0.45359237*2)/2) : Math.round(store.inc/0.45359237*2)/2;
+  store.inc = inc>0 ? (toKg ? inc : (Math.abs(inc-5*Math.round(inc/5))<=0.5 && Math.round(inc/5)>0 ? 5*Math.round(inc/5) : inc)) : store.inc;
+  store.unit = to;
+}
 function seedFor(exId, variation){ return SEED[keyFor(exId, variation)] || null; }
 
 /* Progression: PDF rule - top of rep range on ALL sets at target RIR -> +smallest increment. */
@@ -1080,7 +1093,7 @@ app.addEventListener("change", e=>{
     item.seeded = !!seed && !last;
     save(); render();
   }
-  else if(t.dataset && t.dataset.act==="unit"){ store.unit = t.value; save(); render(); }
+  else if(t.dataset && t.dataset.act==="unit"){ if(t.value!==store.unit) convertUnits(t.value); save(); render(); }
   else if(t.dataset && t.dataset.act==="histpick"){ ui.histKey = t.value; render(); }
 });
 document.getElementById("importFile").addEventListener("change", e=>{
