@@ -480,9 +480,19 @@ const VARNAME_VIDEOS = {
    STORE (localStorage)
    ============================================================ */
 const LS_KEY = "trenched2.v1";
-function loadStore(){ try{ const s = JSON.parse(localStorage.getItem(LS_KEY)); if(s && s.v===1) return s; }catch(e){} return null; }
-let store = loadStore() || { v:1, unit:"lb", inc:5, sessions:[], draft:null, customVars:{} };
-function save(){ localStorage.setItem(LS_KEY, JSON.stringify(store)); }
+function isObj(x){ return !!x && typeof x==="object" && !Array.isArray(x); }
+function normStore(s){
+  const o = Object.assign({ v:1, unit:"lb", inc:5, sessions:[], draft:null, customVars:{} }, s);
+  if(o.unit!=="lb" && o.unit!=="kg") o.unit = "lb";
+  if(!(o.inc>0)) o.inc = 5;
+  if(!Array.isArray(o.sessions)) o.sessions = [];
+  if(!isObj(o.customVars)) o.customVars = {};
+  if(!isObj(o.draft)) o.draft = null;
+  return o;
+}
+function loadStore(){ try{ const s = JSON.parse(localStorage.getItem(LS_KEY)); if(isObj(s) && s.v===1) return normStore(s); }catch(e){} return null; }
+let store = loadStore() || normStore({});
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(store)); }catch(e){ console.warn("Trenched: could not save", e); } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
 const ui = { view:"today", dayId:null, histKey:null, summary:null, openCues:{} };
@@ -1079,10 +1089,12 @@ document.getElementById("importFile").addEventListener("change", e=>{
   rd.onload = ()=>{
     try{
       const d = JSON.parse(rd.result);
-      if(d && d.store && Array.isArray(d.store.sessions)){
-        store = d.store; save(); ui.view="today"; render();
-        alert("Backup imported: "+store.sessions.length+" sessions.");
-      } else alert("That file does not look like a Trenched backup.");
+      if(d && isObj(d.store) && d.store.v===1 && Array.isArray(d.store.sessions) && d.store.sessions.every(isObj)){
+        if(!confirm("Replace the "+store.sessions.length+" sessions on this device with the "+d.store.sessions.length+" in this backup?")){ return; }
+        const prev = store;
+        try{ store = normStore(d.store); save(); ui.view="today"; render(); alert("Backup imported: "+store.sessions.length+" sessions."); }
+        catch(err){ store = prev; save(); ui.view="today"; render(); alert("That backup did not work. Your previous data was kept."); }
+      } else alert("That file does not look like a Trenched backup. Nothing was changed.");
     }catch(err){ alert("Could not read that file."); }
   };
   rd.readAsText(f);
