@@ -1130,5 +1130,8 @@ const hv = location.hash.replace('#','');
 if(["today","week","history","more"].indexOf(hv) >= 0){ ui.view = hv; }
 render();
 </script>
+<script>
+try{if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){window.addEventListener('load',function(){try{navigator.serviceWorker.register('sw.js').catch(function(){});}catch(e){}});}}catch(e){}
+</script>
 </body>
 </html>
