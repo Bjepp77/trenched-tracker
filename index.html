@@ -492,7 +492,7 @@ function normStore(s){
 }
 function loadStore(){ try{ const s = JSON.parse(localStorage.getItem(LS_KEY)); if(isObj(s) && s.v===1) return normStore(s); }catch(e){} return null; }
 let store = loadStore() || normStore({});
-function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(store)); }catch(e){ console.warn("Trenched: could not save", e); } }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(store)); }catch(e){ console.warn("Trenched: could not save", e); if(!save.warned){ save.warned=true; alert("Could not save: storage is full or blocked. Export your data from More now so nothing is lost."); } } }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
 const ui = { view:"today", dayId:null, histKey:null, summary:null, openCues:{} };
