@@ -1095,50 +1095,6 @@ app.addEventListener("toggle", e=>{
   }
 }, true);
 
-/* ============================================================
-   DEMO MODE (for screenshots / testing): open file with #demo
-   ============================================================ */
-if(location.hash==="#demo"){
-  store.sessions = [{
-    id:1, dayId:"push-a", date:new Date(Date.now()-3*864e5).toISOString(),
-    exercises:[
-      {exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"205",r:"6",rir:"2",done:true},{w:"205",r:"6",rir:"2",done:true}]},
-      {exId:"pa-fly", variation:"Dumbbell Incline Fly", sets:[{w:"50",r:"8",rir:"1",done:true},{w:"50",r:"7",rir:"0",done:true}]}
-    ]
-  },{
-    id:2, dayId:"pull-a", date:new Date(Date.now()-2*864e5).toISOString(),
-    exercises:[{exId:"plla-row", variation:"Chest-Supported T-Bar Row", sets:[{w:"135",r:"5",rir:"1",done:true},{w:"135",r:"5",rir:"2",done:true}]}]
-  }];
-  store.draft = buildDraft("push-b");
-  store.draft.items[1].sets[0].done = true; // incline set 1 done
-  ui.openCues["pb-incline"] = true;
-  save();
-  ui.view = "workout";
-}
-
-if(location.hash==="#demo2"){
-  store.sessions = [
-   {id:1, dayId:"push-a", date:new Date(Date.now()-13*864e5).toISOString(),
-    exercises:[{exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"195",r:"6",rir:"2",done:true},{w:"195",r:"6",rir:"2",done:true}]}]},
-   {id:2, dayId:"push-a", date:new Date(Date.now()-6*864e5).toISOString(),
-    exercises:[{exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"205",r:"6",rir:"2",done:true},{w:"205",r:"6",rir:"2",done:true}]}]},
-   {id:3, dayId:"pull-a", date:new Date(Date.now()-2*864e5).toISOString(),
-    exercises:[{exId:"plla-row", variation:"Chest-Supported T-Bar Row", sets:[{w:"135",r:"5",rir:"1",done:true},{w:"135",r:"5",rir:"2",done:true}]}]}
-  ];
-  store.draft = buildDraft("push-a");
-  save();
-  ui.view = "workout";
-}
-if(location.hash==="#demo3"){
-  store.sessions = [
-   {id:1, dayId:"push-a", date:new Date(Date.now()-13*864e5).toISOString(),
-    exercises:[{exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"195",r:"6",rir:"2",done:true},{w:"195",r:"6",rir:"2",done:true}]}]},
-   {id:2, dayId:"push-a", date:new Date(Date.now()-6*864e5).toISOString(),
-    exercises:[{exId:"pa-flat", variation:"Flat Barbell Bench Press", sets:[{w:"205",r:"6",rir:"2",done:true},{w:"205",r:"6",rir:"2",done:true}]}]}
-  ];
-  save();
-  ui.view = "history";
-}
 const hv = location.hash.replace('#','');
 if(["today","week","history","more"].indexOf(hv) >= 0){ ui.view = hv; }
 render();
