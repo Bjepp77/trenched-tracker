@@ -552,7 +552,7 @@ function strKey(n){return String(n).toUpperCase().replace(/\([^)]*\)/g,'').repla
 function strWrite(name,w,r,unit,src){
   if(!(parseFloat(w)>0))return;
   const s=strLoad();const k=strKey(name);if(!k)return;
-  const rec={w:parseFloat(w),r:parseFloat(r)||null,date:new Date().toISOString().slice(0,10),unit:unit||'lb',src:src};
+  const rec={w:parseFloat(w),r:parseFloat(r)||null,date:(function(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(new Date()),unit:unit||'lb',src:src};
   const cur=s.ex[k];
   if(!cur||rec.w>cur.w||rec.date>cur.date){s.ex[k]=rec;try{localStorage.setItem(SQSTR,JSON.stringify(s));}catch(e){}}
 }
